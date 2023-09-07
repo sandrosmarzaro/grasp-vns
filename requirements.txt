@@ -1,0 +1,4 @@
+tsplib95==0.7.1
+networkx==2.8.8
+matplotlib==3.7.2
+googlemaps==4.10.0
