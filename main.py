@@ -6,6 +6,28 @@ import googlemaps # type: ignore
 import logging
 import time
 import random
+import os
+
+
+def converter_distance_matrix_to_tsplib_instance(distance_matrix):
+    instance = tsplib95.models.StandardProblem()
+    instance.set_dimension(len(distance_matrix['destination_addresses']))
+    instance.set_nodes(list(range(1, len(distance_matrix['destination_addresses']) + 1)))
+    instance.set_display_data_type('COORD_DISPLAY')
+    instance.set_display_data({i: (distance_matrix['origin_addresses'][0], distance_matrix['destination_addresses'][i - 1]) for i in range(1, len(distance_matrix['destination_addresses']) + 1)})
+    instance.set_edge_weight_type('EXPLICIT')
+    instance.set_edge_weights({(i, j): distance_matrix['rows'][i - 1]['elements'][j - 1]['distance']['value'] for i in range(1, len(distance_matrix['destination_addresses']) + 1) for j in range(1, len(distance_matrix['destination_addresses']) + 1)})
+
+    return instance
+
+
+def get_distance_matrix(origin, destinations):
+    gmaps = googlemaps.Client(key=get_api_key())
+    return gmaps.distance_matrix(origin, destinations, mode='driving', units='metric')
+
+
+def get_api_key():
+    return os.getenv('GOOGLE_MAPS_API_KEY')
 
 
 def plot_route(instance, route):
