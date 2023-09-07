@@ -1,6 +1,7 @@
 import tsplib95 # type: ignore
 import networkx as nx # type: ignore
 import matplotlib.pyplot as plt # type: ignore
+import googlemaps # type: ignore
 import time
 import random
 
@@ -161,7 +162,7 @@ def read_instance(instance_path):
 
 
 if __name__ == "__main__":
-    instance_path = 'instances/att48.tsp'
+    instance_path = 'instances/bayg29.tsp'
     instance = read_instance(instance_path)
     print(f'Instance: {instance.name} - {instance.dimension} cities')
     print(f'{instance.comment}')
