@@ -2,6 +2,7 @@ import tsplib95 # type: ignore
 import networkx as nx # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import googlemaps # type: ignore
+import logging
 import time
 import random
 
@@ -161,15 +162,30 @@ def read_instance(instance_path):
     return tsplib95.load(instance_path)
 
 
+def configure_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+        logging.FileHandler('log_file.txt', mode='w'),
+        logging.StreamHandler()
+        ]
+    )
+
+
 if __name__ == "__main__":
+    configure_logging()
+    logger = logging.getLogger()
     instance_path = 'instances/bayg29.tsp'
     instance = read_instance(instance_path)
-    print(f'Instance: {instance.name} - {instance.dimension} cities')
-    print(f'{instance.comment}')
+    logger.info(f'Instance: {instance.name} - {instance.dimension} cities')
+    logger.info(f'{instance.comment}')
     time_start = time.time()
     best_route, route_cost = grasp_gvns(instance)
     time_end = time.time()
-    print(f'Best route: {best_route}')
-    print(f'Execution time: {(time_end - time_start):.2f}s')
-    print(f'Route cost: {route_cost}')
+    logger.info(f'Best route: {best_route}')
+    logger.info(f'Execution time: {(time_end - time_start):.2f}s')
+    logger.info(f'Route cost: {route_cost}')
+    logger.handlers[0].close()
     plot_route(instance, best_route) if instance.display_data_type else None
