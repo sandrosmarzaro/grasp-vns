@@ -1,3 +1,4 @@
+import argparse
 import tsplib95 # type: ignore
 import networkx as nx # type: ignore
 import matplotlib.pyplot as plt # type: ignore
@@ -5,6 +6,7 @@ import googlemaps # type: ignore
 import logging
 import time
 import random
+
 
 def plot_route(instance, route):
     G = instance.get_graph()
@@ -174,11 +176,10 @@ def configure_logging():
     )
 
 
-if __name__ == "__main__":
+def main(instance_name):
     configure_logging()
     logger = logging.getLogger()
-    instance_path = 'instances/bayg29.tsp'
-    instance = read_instance(instance_path)
+    instance = read_instance(f'instances/{instance_name}.tsp')
     logger.info(f'Instance: {instance.name} - {instance.dimension} cities')
     logger.info(f'{instance.comment}')
     time_start = time.time()
@@ -189,3 +190,10 @@ if __name__ == "__main__":
     logger.info(f'Route cost: {route_cost}')
     logger.handlers[0].close()
     plot_route(instance, best_route) if instance.display_data_type else None
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='GRASP-GVNS for TSP')
+    parser.add_argument('instance_name', type=str, help='Name of TSP instance file')
+    args = parser.parse_args()
+    main(args.instance_name)
