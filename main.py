@@ -9,6 +9,10 @@ import random
 import os
 
 
+def main_maps(origin, destinations):
+    pass
+
+
 def converter_distance_matrix_to_tsplib_instance(distance_matrix):
     instance = tsplib95.models.StandardProblem()
     instance.set_dimension(len(distance_matrix['destination_addresses']))
@@ -198,7 +202,7 @@ def configure_logging():
     )
 
 
-def main(instance_name):
+def main_tsplib(instance_name):
     configure_logging()
     logger = logging.getLogger()
     instance = read_instance(f'instances/{instance_name}.tsp')
@@ -216,6 +220,15 @@ def main(instance_name):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='GRASP-GVNS for TSP')
-    parser.add_argument('instance_name', type=str, help='Name of TSP instance file')
+    parser.add_argument('--tsplib', type=str, help='Name of TSP instance file')
+    parser.add_argument('--maps', type=str, nargs='+', help='Origin and destinations (e.g., "Origin Destination1 Destination2")')
     args = parser.parse_args()
-    main(args.instance_name)
+
+    if args.tsplib:
+        main_tsplib(args.tsplib)
+    elif args.maps:
+        origin = args.maps[0]
+        destinations = args.maps[1:]
+        main_maps(origin, destinations)
+    else:
+        print("Please provide either '--tsplib' or '--maps' argument.")
