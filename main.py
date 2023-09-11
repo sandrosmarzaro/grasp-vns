@@ -39,7 +39,7 @@ def plot_route(instance, route):
 
     route_edges = [(route[i], route[i+1]) for i in range(len(route)-1)]
 
-    position = 'coord' if instance.display_data_type == 'COORD DISPLAY' else 'display'
+    position = 'coord' if instance.display_data_type == 'COORD_DISPLAY' else 'display'
 
     pos = {city: (G.nodes[city][position][0], G.nodes[city][position][1]) for city in route}
 
