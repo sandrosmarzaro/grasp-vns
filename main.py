@@ -9,8 +9,26 @@ import random
 import os
 
 
+def converter_tsplib_route_to_googlemaps_route(instance, route):
+    city_coordinates = [instance.get_display_data(city) for city in route]
+    latitudes = [float(coord[0]) for coord in city_coordinates.values()]
+    longitudes = [float(coord[1]) for coord in city_coordinates.values()]
+
+    return [{"lat": lat, "lng": lng} for lat, lng in zip(latitudes, longitudes)]
+
+
 def main_maps(origin, destinations):
-    pass
+    configure_logging()
+    logger = logging.getLogger()
+    distance_matrix = get_distance_matrix(origin, destinations)
+    instance = converter_distance_matrix_to_tsplib_instance(distance_matrix)
+    time_start = time.time()
+    best_route, route_cost = grasp_gvns(instance)
+    time_end = time.time()
+    logger.info(f'Best route: {best_route}')
+    logger.info(f'Execution time: {(time_end - time_start):.2f}s')
+    logger.info(f'Route cost: {route_cost}')
+    logger.handlers[0].close()
 
 
 def converter_distance_matrix_to_tsplib_instance(distance_matrix):
