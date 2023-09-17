@@ -1,2 +1,4 @@
 .vscode/
 log_file.txt
+instance/maps/*.tsp
+*.html
