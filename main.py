@@ -1,27 +1,69 @@
 import argparse
+import itertools
 import tsplib95 # type: ignore
 import networkx as nx # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import googlemaps # type: ignore
+import gmplot # type: ignore
+import webbrowser
 import logging
 import time
 import random
 import os
+from datetime import datetime
 
 
-def converter_tsplib_route_to_googlemaps_route(instance, route):
-    city_coordinates = [instance.get_display_data(city) for city in route]
-    latitudes = [float(coord[0]) for coord in city_coordinates.values()]
-    longitudes = [float(coord[1]) for coord in city_coordinates.values()]
+def plot_route_in_googlemaps_directions(route_coordinates):
+    gmap = gmplot.GoogleMapPlotter(route_coordinates[0]['lat'], route_coordinates[0]['lng'], 15, apikey=get_api_key())
+    gmap.directions(
+        (float(route_coordinates[0]['lat']), float(route_coordinates[0]['lng']),),
+        (float(route_coordinates[-1]['lat']), float(route_coordinates[-1]['lng']),),
+        waypoints=[(float(point['lat']), float(point['lng'])) for point in route_coordinates[1:-1]]
+    )
+    gmap.draw("route_map_direction.html")
+    webbrowser.open("route_map_direction.html")
 
-    return [{"lat": lat, "lng": lng} for lat, lng in zip(latitudes, longitudes)]
+
+def plot_route_in_googlemaps(route_coordinates):
+    latitudes = [coord['lat'] for coord in route_coordinates]
+    longitudes = [coord['lng'] for coord in route_coordinates]
+    gmap = gmplot.GoogleMapPlotter(latitudes[0], longitudes[0], 15, apikey=get_api_key())
+    for lat, lng in zip(latitudes, longitudes):
+        gmap.marker(lat, lng)
+    gmap.plot(latitudes, longitudes, 'blue', edge_width=2)
+    gmap.draw("route_map.html")
+    webbrowser.open("route_map.html")
 
 
-def main_maps(origin, destinations):
+def get_latlng_from_address(address):
+    gmaps = googlemaps.Client(key=get_api_key())
+    geocode_result = gmaps.geocode(address)
+
+    if not geocode_result or 'geometry' not in geocode_result[0]:
+        return None
+    location = geocode_result[0]['geometry']['location']
+    return {'lat': location['lat'], 'lng': location['lng']}
+
+
+def converter_tsplib_route_to_googlemaps_latlng(distance_matrix, route):
+    route_coordinates = []
+    destination_addresses = distance_matrix['destination_addresses']
+    for city_index in route:
+        address = destination_addresses[city_index - 1]
+        latlng = get_latlng_from_address(address)
+        route_coordinates.append(latlng)
+
+    return route_coordinates
+
+
+def main_maps(destinations):
     configure_logging()
     logger = logging.getLogger()
-    distance_matrix = get_distance_matrix(origin, destinations)
-    instance = converter_distance_matrix_to_tsplib_instance(distance_matrix)
+    distance_matrix = get_distance_matrix(destinations)
+    instance_name = datetime.now().strftime("%Y%m%d%H%M%S")
+    instance = converter_distance_matrix_to_tsplib_instance(distance_matrix, instance_name)
+    with open(f'instances/maps/{instance_name}.tsp', 'w+') as file:
+        instance.write(file)
     time_start = time.time()
     best_route, route_cost = grasp_gvns(instance)
     time_end = time.time()
@@ -29,30 +71,39 @@ def main_maps(origin, destinations):
     logger.info(f'Execution time: {(time_end - time_start):.2f}s')
     logger.info(f'Route cost: {route_cost}')
     logger.handlers[0].close()
+    route_coordinates = converter_tsplib_route_to_googlemaps_latlng(distance_matrix, best_route)
+    plot_route_in_googlemaps(route_coordinates)
+    plot_route_in_googlemaps_directions(route_coordinates)
 
 
-def converter_distance_matrix_to_tsplib_instance(distance_matrix):
-    instance = tsplib95.models.StandardProblem()
-    instance.set_dimension(len(distance_matrix['destination_addresses']))
-    instance.set_nodes(list(range(1, len(distance_matrix['destination_addresses']) + 1)))
-    instance.set_display_data_type('COORD_DISPLAY')
-    instance.set_display_data({i: (distance_matrix['origin_addresses'][0], distance_matrix['destination_addresses'][i - 1]) for i in range(1, len(distance_matrix['destination_addresses']) + 1)})
-    instance.set_edge_weight_type('EXPLICIT')
-    instance.set_edge_weights({(i, j): distance_matrix['rows'][i - 1]['elements'][j - 1]['distance']['value'] for i in range(1, len(distance_matrix['destination_addresses']) + 1) for j in range(1, len(distance_matrix['destination_addresses']) + 1)})
+def converter_distance_matrix_to_tsplib_instance(distance_matrix, name):
+    dimension = len(distance_matrix['destination_addresses'])
+    edge_weights_matrix = [[0 for _ in range(dimension)] for _ in range(dimension)]
+    for i, j in itertools.product(range(dimension), range(dimension)):
+        edge_weights_matrix[i][j] = distance_matrix['rows'][i]['elements'][j]['distance']['value']
 
-    return instance
+    return tsplib95.models.StandardProblem(
+        name=name,
+        comment='Instance generated from Google Maps API',
+        type='TSP',
+        dimension=dimension,
+        nodes=list(range(1, dimension + 1)),
+        edge_weight_type='EXPLICIT',
+        edge_weight_format='FULL_MATRIX',
+        edge_weights=edge_weights_matrix
+    )
 
 
-def get_distance_matrix(origin, destinations):
+def get_distance_matrix(destinations):
     gmaps = googlemaps.Client(key=get_api_key())
-    return gmaps.distance_matrix(origin, destinations, mode='driving', units='metric')
+    return gmaps.distance_matrix(destinations, destinations, mode='driving', units='metric')
 
 
 def get_api_key():
     return os.getenv('GOOGLE_MAPS_API_KEY')
 
 
-def plot_route(instance, route):
+def plot_route_in_networkx(instance, route):
     G = instance.get_graph()
 
     route_edges = [(route[i], route[i+1]) for i in range(len(route)-1)]
@@ -223,7 +274,7 @@ def configure_logging():
 def main_tsplib(instance_name):
     configure_logging()
     logger = logging.getLogger()
-    instance = read_instance(f'instances/{instance_name}.tsp')
+    instance = read_instance(f'instances/tsp/{instance_name}.tsp')
     logger.info(f'Instance: {instance.name} - {instance.dimension} cities')
     logger.info(f'{instance.comment}')
     time_start = time.time()
@@ -233,20 +284,19 @@ def main_tsplib(instance_name):
     logger.info(f'Execution time: {(time_end - time_start):.2f}s')
     logger.info(f'Route cost: {route_cost}')
     logger.handlers[0].close()
-    plot_route(instance, best_route) if instance.display_data_type else None
+    plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='GRASP-GVNS for TSP')
     parser.add_argument('--tsplib', type=str, help='Name of TSP instance file')
-    parser.add_argument('--maps', type=str, nargs='+', help='Origin and destinations (e.g., "Origin Destination1 Destination2")')
+    parser.add_argument('--maps', type=str, nargs='+', help='Destination addresses')
     args = parser.parse_args()
 
     if args.tsplib:
         main_tsplib(args.tsplib)
     elif args.maps:
-        origin = args.maps[0]
-        destinations = args.maps[1:]
-        main_maps(origin, destinations)
+        destinations = args.maps
+        main_maps(destinations)
     else:
         print("Please provide either '--tsplib' or '--maps' argument.")
