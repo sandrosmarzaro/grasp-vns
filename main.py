@@ -296,7 +296,6 @@ if __name__ == "__main__":
     if args.tsplib:
         main_tsplib(args.tsplib)
     elif args.maps:
-        destinations = args.maps
-        main_maps(destinations)
+        main_maps(args.maps)
     else:
         print("Please provide either '--tsplib' or '--maps' argument.")
