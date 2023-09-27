@@ -35,27 +35,6 @@ def plot_route_in_googlemaps(route_coordinates):
     webbrowser.open("route_map.html")
 
 
-def get_latlng_from_address(address):
-    gmaps = googlemaps.Client(key=get_api_key())
-    geocode_result = gmaps.geocode(address)
-
-    if not geocode_result or 'geometry' not in geocode_result[0]:
-        return None
-    location = geocode_result[0]['geometry']['location']
-    return {'lat': location['lat'], 'lng': location['lng']}
-
-
-def converter_tsplib_route_to_googlemaps_latlng(distance_matrix, route):
-    route_coordinates = []
-    destination_addresses = distance_matrix['destination_addresses']
-    for city_index in route:
-        address = destination_addresses[city_index - 1]
-        latlng = get_latlng_from_address(address)
-        route_coordinates.append(latlng)
-
-    return route_coordinates
-
-
 def main_maps(destinations):
     configure_logging()
     logger = logging.getLogger()
@@ -71,9 +50,15 @@ def main_maps(destinations):
     logger.info(f'Execution time: {(time_end - time_start):.2f}s')
     logger.info(f'Route cost: {route_cost}')
     logger.handlers[0].close()
-    route_coordinates = converter_tsplib_route_to_googlemaps_latlng(distance_matrix, best_route)
-    plot_route_in_googlemaps(route_coordinates)
-    plot_route_in_googlemaps_directions(route_coordinates)
+    route_coordinates = [{
+            'lat': float(dest.split(',')[0].strip()),
+            'lng': float(dest.split(',')[1].strip())}
+        for dest in destinations
+    ]
+    ordered_route_coordinates = [route_coordinates[i] for i in best_route]
+    logger.info(f'Route coordinates: {ordered_route_coordinates}')
+    plot_route_in_googlemaps(ordered_route_coordinates)
+    plot_route_in_googlemaps_directions(ordered_route_coordinates)
 
 
 def converter_distance_matrix_to_tsplib_instance(distance_matrix, name):
