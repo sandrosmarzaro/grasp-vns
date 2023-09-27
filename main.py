@@ -11,6 +11,46 @@ import time
 import random
 import os
 from datetime import datetime
+import re
+
+
+def add_waypoint_markers(file_path):
+    with open(file_path, 'r') as file:
+        content = file.read()
+
+    origin_match = re.search(r"origin: new google.maps.LatLng\(([\-\d.]+), ([\-\d.]+)\)", content)
+    origin_lat, origin_lng = origin_match.groups()
+    waypoints_match = re.search(r"waypoints: \[(.*?)\]", content, re.DOTALL)
+    waypoints_str = waypoints_match[1]
+    waypoints = re.findall(r"new google.maps.LatLng\(([\-\d.]+), ([\-\d.]+)\)", waypoints_str)
+    waypoints.insert(0, (origin_lat, origin_lng))
+    marker_code = "".join(
+        f"""
+        new google.maps.Marker({{
+            position: new google.maps.LatLng({lat}, {lng}),
+            map: map
+        }});
+        """
+        for lat, lng in waypoints
+    )
+    pattern = r"(new google.maps.DirectionsRenderer\({.*?}\).setDirections\(response\);)"
+    replacement = r"\1" + marker_code
+    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+
+    with open(file_path, 'w') as file:
+        file.write(new_content)
+
+
+def suppress_markers_in_html(file_path):
+    with open(file_path, 'r') as file:
+        content = file.read()
+
+    pattern = r"(new google.maps.DirectionsRenderer\({)"
+    replacement = r"\1\n                suppressMarkers: true,"
+    new_content = re.sub(pattern, replacement, content)
+
+    with open(file_path, 'w') as file:
+        file.write(new_content)
 
 
 def plot_route_in_googlemaps_directions(route_coordinates):
@@ -21,6 +61,8 @@ def plot_route_in_googlemaps_directions(route_coordinates):
         waypoints=[(float(point['lat']), float(point['lng'])) for point in route_coordinates[1:-1]]
     )
     gmap.draw("route_map_direction.html")
+    suppress_markers_in_html("route_map_direction.html")
+    add_waypoint_markers("route_map_direction.html")
     webbrowser.open("route_map_direction.html")
 
 
@@ -56,7 +98,6 @@ def main_maps(destinations):
         for dest in destinations
     ]
     ordered_route_coordinates = [route_coordinates[i] for i in best_route]
-    logger.info(f'Route coordinates: {ordered_route_coordinates}')
     plot_route_in_googlemaps(ordered_route_coordinates)
     plot_route_in_googlemaps_directions(ordered_route_coordinates)
 
