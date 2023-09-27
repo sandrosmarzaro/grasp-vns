@@ -107,10 +107,11 @@ def converter_distance_matrix_to_tsplib_instance(distance_matrix, name):
     edge_weights_matrix = [[0 for _ in range(dimension)] for _ in range(dimension)]
     for i, j in itertools.product(range(dimension), range(dimension)):
         edge_weights_matrix[i][j] = distance_matrix['rows'][i]['elements'][j]['distance']['value']
+    addresses = "\n".join(f"{idx}: {address}" for idx, address in enumerate(distance_matrix['destination_addresses']))
 
     return tsplib95.models.StandardProblem(
         name=name,
-        comment='Instance generated from Google Maps API',
+        comment=f'Instance generated from Google Maps API of addresses:\n{addresses}',
         type='TSP',
         dimension=dimension,
         nodes=list(range(1, dimension + 1)),
