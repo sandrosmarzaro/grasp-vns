@@ -165,7 +165,9 @@ def three_opt(instance, route):
     for i in range(1, len(route) - 4):
         for j in range(i + 1, len(route) - 3):
             for k in range(j + 1, len(route) - 2):
-                if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) + instance.get_weight(route[k], route[k + 1]) > instance.get_weight(route[i], route[j]) + instance.get_weight(route[i + 1], route[j + 1]) + instance.get_weight(route[k], route[k + 1]):
+                if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) + \
+                    instance.get_weight(route[k], route[k + 1]) > instance.get_weight(route[i], route[j]) + \
+                        instance.get_weight(route[i + 1], route[j + 1]) + instance.get_weight(route[k], route[k + 1]):
                     route[i + 1], route[j] = route[j], route[i + 1]
                     route[i + 2:j + 1] = reversed(route[i + 2:j + 1])
                     route[j + 1], route[k] = route[k], route[j + 1]
@@ -178,7 +180,9 @@ def or_opt(instance, route):
     for i in range(1, len(route) - 3):
         for j in range(i + 1, len(route) - 2):
             for k in range(j + 1, len(route) - 1):
-                if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) + instance.get_weight(route[k], route[k + 1]) > instance.get_weight(route[i], route[j + 1]) + instance.get_weight(route[k], route[i + 1]) + instance.get_weight(route[j], route[k + 1]):
+                if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) + \
+                    instance.get_weight(route[k], route[k + 1]) > instance.get_weight(route[i], route[j + 1]) + \
+                        instance.get_weight(route[k], route[i + 1]) + instance.get_weight(route[j], route[k + 1]):
                     route[i + 1:j + 1] = reversed(route[i + 1:j + 1])
 
     return route
@@ -187,7 +191,8 @@ def or_opt(instance, route):
 def two_opt(instance, route):
     for i in range(1, len(route) - 2):
         for j in range(i + 1, len(route) - 1):
-            if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) > instance.get_weight(route[i], route[j]) + instance.get_weight(route[i + 1], route[j + 1]):
+            if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) > \
+                instance.get_weight(route[i], route[j]) + instance.get_weight(route[i + 1], route[j + 1]):
                 route[i + 1], route[j] = route[j], route[i + 1]
                 route[i + 2:j + 1] = reversed(route[i + 2:j + 1])
 
@@ -255,7 +260,8 @@ def greedy_randomized_adaptive_search_procedure(instance, alpha):
         c_max = instance.get_weight(initial_city, biggest_city)
         threshold_min = c_min
         threshold_max = c_min + alpha * (c_max - c_min)
-        restricted_candidate_list = [city for city in candidate_list if threshold_min <= instance.get_weight(initial_city, city) <= threshold_max]
+        restricted_candidate_list = [city for city in candidate_list if threshold_min <= \
+                                        instance.get_weight(initial_city, city) <= threshold_max]
         random_city = random.choice(restricted_candidate_list)
         route.append(random_city)
         candidate_list.remove(random_city)
