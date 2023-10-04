@@ -1,17 +1,23 @@
-import argparse
 import itertools
-import tsplib95 # type: ignore
-import networkx as nx # type: ignore
-import matplotlib.pyplot as plt # type: ignore
-import googlemaps # type: ignore
-import gmplot # type: ignore
-import webbrowser
+import tsplib95
+import networkx as nx
+import matplotlib.pyplot as plt
+import googlemaps
+import gmplot
 import logging
 import time
 import random
 import os
 from datetime import datetime
 import re
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QLineEdit, QListWidget, QFileDialog, QMessageBox, QSizePolicy, QToolBar
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtWidgets import QAction
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 
 def add_waypoint_markers(file_path):
@@ -63,7 +69,6 @@ def plot_route_in_googlemaps_directions(route_coordinates):
     gmap.draw("route_map_direction.html")
     suppress_markers_in_html("route_map_direction.html")
     add_waypoint_markers("route_map_direction.html")
-    webbrowser.open("route_map_direction.html")
 
 
 def plot_route_in_googlemaps(route_coordinates):
@@ -74,7 +79,20 @@ def plot_route_in_googlemaps(route_coordinates):
         gmap.marker(lat, lng)
     gmap.plot(latitudes, longitudes, 'blue', edge_width=2)
     gmap.draw("route_map.html")
-    webbrowser.open("route_map.html")
+
+
+def get_coordinates(destination):
+    gmaps = googlemaps.Client(key=get_api_key())
+
+    if re.match(r"^-?\d+\.\d+,-?\d+\.\d+$", destination):
+        lat, lng = destination.split(',')
+        return {'lat': float(lat), 'lng': float(lng)}
+
+    if result := gmaps.geocode(destination):
+        location = result[0]['geometry']['location']
+        return {'lat': location['lat'], 'lng': location['lng']}
+
+    return None
 
 
 def main_maps(destinations):
@@ -92,11 +110,7 @@ def main_maps(destinations):
     logger.info(f'Execution time: {(time_end - time_start):.2f}s')
     logger.info(f'Route cost: {route_cost}')
     logger.handlers[0].close()
-    route_coordinates = [{
-            'lat': float(dest.split(',')[0].strip()),
-            'lng': float(dest.split(',')[1].strip())}
-        for dest in destinations
-    ]
+    route_coordinates = [get_coordinates(address) for address in destinations]
     ordered_route_coordinates = [route_coordinates[i] for i in best_route]
     plot_route_in_googlemaps(ordered_route_coordinates)
     plot_route_in_googlemaps_directions(ordered_route_coordinates)
@@ -132,19 +146,19 @@ def get_api_key():
 
 def plot_route_in_networkx(instance, route):
     G = instance.get_graph()
+    fig = plt.Figure(figsize=(6, 6))
+    ax = fig.add_subplot(111)
 
     route_edges = [(route[i], route[i+1]) for i in range(len(route)-1)]
-
     position = 'coord' if instance.display_data_type == 'COORD_DISPLAY' else 'display'
-
     pos = {city: (G.nodes[city][position][0], G.nodes[city][position][1]) for city in route}
 
-    nx.draw_networkx_nodes(G, pos, node_size=100, node_color='lightgray')
-    nx.draw_networkx_edges(G, pos, edgelist=route_edges, edge_color='black')
-    nx.draw_networkx_labels(G, pos, font_size=8)
+    nx.draw_networkx_nodes(G, pos, node_size=100, node_color='lightgray', ax=ax)
+    nx.draw_networkx_edges(G, pos, edgelist=route_edges, edge_color='black', ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=8, ax=ax)
 
-    plt.title(f'{instance.name} - Route')
-    plt.show()
+    ax.set_title(f'{instance.name} - Route')
+    return fig
 
 
 def update_best_route(instance, old_route, new_route):
@@ -304,10 +318,10 @@ def configure_logging():
     )
 
 
-def main_tsplib(instance_name):
+def main_tsplib(filepath):
     configure_logging()
     logger = logging.getLogger()
-    instance = read_instance(f'instances/tsp/{instance_name}.tsp')
+    instance = read_instance(filepath)
     logger.info(f'Instance: {instance.name} - {instance.dimension} cities')
     logger.info(f'{instance.comment}')
     time_start = time.time()
@@ -317,18 +331,153 @@ def main_tsplib(instance_name):
     logger.info(f'Execution time: {(time_end - time_start):.2f}s')
     logger.info(f'Route cost: {route_cost}')
     logger.handlers[0].close()
-    plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
+    return plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
+
+
+class App(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.title = 'GRASP-VNS for TSP'
+        self.left = 10
+        self.top = 10
+        self.width = 1280
+        self.height = 720
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+        self.create_main_menu()
+
+    def create_main_menu(self):
+        layout = QHBoxLayout()
+
+        font = QFont()
+        font.setPointSize(24)
+
+        self.tsplib_button = QPushButton('TSPLIB', self)
+        self.tsplib_button.setFont(font)
+        self.tsplib_button.clicked.connect(self.on_tsplib)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.tsplib_button.setSizePolicy(sizePolicy)
+        layout.addWidget(self.tsplib_button)
+
+        self.google_maps_button = QPushButton('Google Maps', self)
+        self.google_maps_button.setFont(font)
+        self.google_maps_button.clicked.connect(self.on_google_maps)
+        self.google_maps_button.setSizePolicy(sizePolicy)
+        layout.addWidget(self.google_maps_button)
+
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+
+    def on_tsplib(self):
+        filepath, _ = QFileDialog.getOpenFileName(self, "Select TSPLIB instance", "", "TSP files (*.tsp)")
+        if filepath:
+            fig = main_tsplib(filepath)
+            self.display_plot(fig)
+
+    def display_plot(self, fig):
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        layout = QVBoxLayout(self.central_widget)
+
+        canvas = FigureCanvas(fig)
+        layout.addWidget(canvas)
+
+        toolbar = NavigationToolbar(canvas, self)
+        layout.addWidget(toolbar)
+
+        self.create_back_button(toolbar)
+
+    def create_back_button(self, toolbar):
+        back_action = QAction("Back to Menu", self)
+        back_action.triggered.connect(self.create_main_menu)
+        toolbar.addAction(back_action)
+
+    def on_google_maps(self):
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        main_layout = QVBoxLayout()
+
+        self.address_label = QLabel("Enter Address", self)
+        self.address_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.address_label)
+
+        h_layout = QHBoxLayout()
+
+        h_layout.addStretch()
+
+        self.address_input = QLineEdit(self)
+        h_layout.addWidget(self.address_input)
+
+        self.add_address_button = QPushButton("Add", self)
+        self.add_address_button.clicked.connect(self.add_address_to_list)
+        h_layout.addWidget(self.add_address_button)
+
+        h_layout.addStretch()
+
+        main_layout.addLayout(h_layout)
+
+        self.address_list = QListWidget(self)
+        self.address_list.setMaximumHeight(200)
+        self.address_list.itemDoubleClicked.connect(self.remove_address_from_list)
+        main_layout.addWidget(self.address_list)
+
+        buttons_layout = QHBoxLayout()
+
+        self.back_to_menu_button = QPushButton("Back to Menu", self)
+        self.back_to_menu_button.clicked.connect(self.create_main_menu)
+        buttons_layout.addWidget(self.back_to_menu_button)
+
+        self.calculate_route_button = QPushButton("Calculate Route", self)
+        self.calculate_route_button.clicked.connect(self.execute_main_maps)
+        buttons_layout.addWidget(self.calculate_route_button)
+
+        main_layout.addLayout(buttons_layout)
+
+        main_layout.addStretch()
+
+        self.central_widget.setLayout(main_layout)
+
+
+    def add_address_to_list(self):
+        if self.address_list.count() >= 10:
+            QMessageBox.warning(self, "Address Limit", "You can only add up to 10 addresses.")
+            return
+
+        if address := self.address_input.text().strip():
+            self.address_list.addItem(address)
+            self.address_input.clear()
+
+    def remove_address_from_list(self, item):
+        row = self.address_list.row(item)
+        self.address_list.takeItem(row)
+
+    def execute_main_maps(self):
+        addresses = [self.address_list.item(i).text() for i in range(self.address_list.count())]
+        main_maps(addresses)
+        self.display_html("route_map_direction.html")
+
+    def display_html(self, html_path):
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        layout = QVBoxLayout(self.central_widget)
+
+        web_view = QWebEngineView(self)
+        web_view.load(QUrl.fromLocalFile(os.path.abspath(html_path)))
+        layout.addWidget(web_view)
+
+        toolbar = QToolBar(self)
+        self.create_back_button(toolbar)
+        layout.addWidget(toolbar)
+
+        self.central_widget.setLayout(layout)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='GRASP-GVNS for TSP')
-    parser.add_argument('--tsplib', type=str, help='Name of TSP instance file')
-    parser.add_argument('--maps', type=str, nargs='+', help='Destination addresses')
-    args = parser.parse_args()
-
-    if args.tsplib:
-        main_tsplib(args.tsplib)
-    elif args.maps:
-        main_maps(args.maps)
-    else:
-        print("Please provide either '--tsplib' or '--maps' argument.")
+    app = QApplication(sys.argv)
+    ex = App()
+    ex.show()
+    sys.exit(app.exec_())

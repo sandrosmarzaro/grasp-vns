@@ -3,3 +3,4 @@ networkx==2.8.8
 matplotlib==3.7.2
 googlemaps==4.10.0
 gmplot==1.4.1
+pyqt5==5.15.9
