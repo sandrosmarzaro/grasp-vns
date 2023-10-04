@@ -11,7 +11,7 @@ import os
 from datetime import datetime
 import re
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QLineEdit, QListWidget, QFileDialog, QMessageBox, QSizePolicy, QToolBar
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QLineEdit, QListWidget, QFileDialog, QMessageBox, QSizePolicy, QToolBar, QTextEdit, QSplitter
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtWidgets import QAction
@@ -322,14 +322,14 @@ def main_tsplib(filepath):
     configure_logging()
     logger = logging.getLogger()
     instance = read_instance(filepath)
-    logger.info(f'Instance: {instance.name} - {instance.dimension} cities')
-    logger.info(f'{instance.comment}')
+    logger.info(f'Instance: {instance.name}')
+    logger.info(f'Comment: {instance.comment}')
     time_start = time.time()
     best_route, route_cost = grasp_gvns(instance)
     time_end = time.time()
-    logger.info(f'Best route: {best_route}')
-    logger.info(f'Execution time: {(time_end - time_start):.2f}s')
-    logger.info(f'Route cost: {route_cost}')
+    logger.info(f'Best Route: {best_route}')
+    logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
+    logger.info(f'Route Cost: {route_cost}')
     logger.handlers[0].close()
     return plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
 
@@ -383,13 +383,44 @@ class App(QMainWindow):
         self.setCentralWidget(self.central_widget)
         layout = QVBoxLayout(self.central_widget)
 
+        splitter = QSplitter(Qt.Horizontal)
+
+        self.log_display = QTextEdit(self)
+        self.log_display.setReadOnly(True)
+        self.log_display.setAcceptRichText(True)
+
+        font = self.log_display.font()
+        font.setPointSize(14)
+        self.log_display.setFont(font)
+
+        with open('log_file.txt', 'r') as log_file:
+            self.log_display.setHtml(self.log_and_display(log_file.read()))
+        splitter.addWidget(self.log_display)
+
         canvas = FigureCanvas(fig)
-        layout.addWidget(canvas)
+        splitter.addWidget(canvas)
+
+        layout.addWidget(splitter)
 
         toolbar = NavigationToolbar(canvas, self)
         layout.addWidget(toolbar)
 
         self.create_back_button(toolbar)
+
+    def log_and_display(self, message):
+        message = re.sub(
+            r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - \w+ - ',
+            '',
+            message,
+            flags=re.MULTILINE,
+        )
+        message = message.replace("Instance: ", "<b>Instance</b><br>")
+        message = message.replace("Comment: ", "<br><br><b>Comment</b><br>")
+        message = message.replace("Best Route: ", "<br><br><b>Best Route</b><br>")
+        message = message.replace("Execution Time: ", "<br><br><b>Execution Time</b><br>")
+        message = message.replace("Route Cost: ", "<br><br><b>Route Cost</b><br>")
+
+        return message
 
     def create_back_button(self, toolbar):
         back_action = QAction("Back to Menu", self)
