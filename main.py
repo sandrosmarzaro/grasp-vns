@@ -97,7 +97,7 @@ def get_coordinates(destination):
 
 def main_maps(destinations):
     configure_logging()
-    logger = logging.getLogger()
+    logger = logging.getLogger('app')
     distance_matrix = get_distance_matrix(destinations)
     instance_name = datetime.now().strftime("%Y%m%d%H%M%S")
     instance = converter_distance_matrix_to_tsplib_instance(logger, distance_matrix, instance_name)
@@ -308,20 +308,20 @@ def read_instance(instance_path):
 
 
 def configure_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[
-        logging.FileHandler('log_file.txt', mode='w'),
-        logging.StreamHandler()
-        ]
-    )
+    logger = logging.getLogger('app')
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    file_handler = logging.FileHandler('log_file.txt', mode='w')
+    file_handler.setFormatter(formatter)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
 
 
 def main_tsplib(filepath):
     configure_logging()
-    logger = logging.getLogger()
+    logger = logging.getLogger('app')
     instance = read_instance(filepath)
     logger.info(f'Instance: {instance.name}')
     logger.info(f'Comment: {instance.comment}')
@@ -482,7 +482,6 @@ class App(QMainWindow):
 
         self.central_widget.setLayout(main_layout)
 
-
     def add_address_to_list(self):
         if self.address_list.count() >= 10:
             QMessageBox.warning(self, "Address Limit", "You can only add up to 10 addresses.")
@@ -506,9 +505,23 @@ class App(QMainWindow):
         self.setCentralWidget(self.central_widget)
         layout = QVBoxLayout(self.central_widget)
 
+        splitter = QSplitter(Qt.Horizontal)
+
+        self.log_display = QTextEdit(self)
+        self.log_display.setReadOnly(True)
+        self.log_display.setAcceptRichText(True)
+        font = self.log_display.font()
+        font.setPointSize(14)
+        self.log_display.setFont(font)
+        with open('log_file.txt', 'r') as log_file:
+            self.log_display.setHtml(self.log_and_display(log_file.read()))
+        splitter.addWidget(self.log_display)
+
         web_view = QWebEngineView(self)
         web_view.load(QUrl.fromLocalFile(os.path.abspath(html_path)))
-        layout.addWidget(web_view)
+        splitter.addWidget(web_view)
+
+        layout.addWidget(splitter)
 
         toolbar = QToolBar(self)
         self.create_back_button(toolbar)
