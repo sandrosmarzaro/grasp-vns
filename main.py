@@ -401,11 +401,20 @@ class App(QMainWindow):
         splitter.addWidget(canvas)
 
         layout.addWidget(splitter)
+        toolbar_layout = QHBoxLayout()
+
+        back_action = QAction("Back to Menu", self)
+        back_action.triggered.connect(self.create_main_menu)
+        back_button = QToolBar(self)
+        back_button.addAction(back_action)
+        toolbar_layout.addWidget(back_button)
+
+        toolbar_layout.addStretch(1)
 
         toolbar = NavigationToolbar(canvas, self)
-        layout.addWidget(toolbar)
+        toolbar_layout.addWidget(toolbar)
 
-        self.create_back_button(toolbar)
+        layout.addLayout(toolbar_layout)
 
     def log_and_display(self, message):
         message = re.sub(
