@@ -86,11 +86,16 @@ def get_coordinates(destination):
 
     if re.match(r"^-?\d+\.\d+,-?\d+\.\d+$", destination):
         lat, lng = destination.split(',')
-        return {'lat': float(lat), 'lng': float(lng)}
+        return {'lat': float(lat), 'lng': float(lng), 'type': 'coordinates'}
 
     if result := gmaps.geocode(destination):
         location = result[0]['geometry']['location']
-        return {'lat': location['lat'], 'lng': location['lng']}
+        return {'lat': location['lat'], 'lng': location['lng'], 'type': 'address'}
+
+    if re.match(r"^ChIJ[a-zA-Z0-9]{27}$", destination):
+        if result := gmaps.place(destination):
+            location = result['result']['geometry']['location']
+            return {'lat': location['lat'], 'lng': location['lng'], 'type': 'place_id'}
 
     return None
 
@@ -100,7 +105,17 @@ def main_maps(destinations):
     logger = logging.getLogger('app')
     distance_matrix = get_distance_matrix(destinations)
     instance_name = datetime.now().strftime("%Y%m%d%H%M%S")
-    instance = converter_distance_matrix_to_tsplib_instance(logger, distance_matrix, instance_name)
+    logger.info(f'Instance: {instance_name}')
+    addresses = []
+    for idx, dest in enumerate(destinations):
+        coord_info = get_coordinates(dest)
+        if coord_info['type'] in ['coordinates', 'place_id']:
+            addresses.append(distance_matrix['destination_addresses'][idx])
+        else:
+            addresses.append(dest)
+    comment = "\n".join(f"{idx}: {address}" for idx, address in enumerate(addresses))
+    logger.info(f'Comment: {comment}')
+    instance = converter_distance_matrix_to_tsplib_instance(addresses, distance_matrix, instance_name)
     with open(f'instances/maps/{instance_name}.tsp', 'w+') as file:
         instance.write(file)
     time_start = time.time()
@@ -116,13 +131,11 @@ def main_maps(destinations):
     plot_route_in_googlemaps_directions(ordered_route_coordinates)
 
 
-def converter_distance_matrix_to_tsplib_instance(logger, distance_matrix, name):
+def converter_distance_matrix_to_tsplib_instance(addresses, distance_matrix, name):
     dimension = len(distance_matrix['destination_addresses'])
     edge_weights_matrix = [[0 for _ in range(dimension)] for _ in range(dimension)]
     for i, j in itertools.product(range(dimension), range(dimension)):
         edge_weights_matrix[i][j] = distance_matrix['rows'][i]['elements'][j]['distance']['value']
-    addresses = "\n".join(f"{idx}: {address}" for idx, address in enumerate(distance_matrix['destination_addresses']))
-    logger.info(f'Comment: {addresses}')
 
     return tsplib95.models.StandardProblem(
         name=name,
