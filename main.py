@@ -323,14 +323,15 @@ def read_instance(instance_path):
 
 def configure_logging():
     logger = logging.getLogger('app')
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    file_handler = logging.FileHandler('log_file.txt', mode='w')
-    file_handler.setFormatter(formatter)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    if not logger.handlers:
+        logger.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        file_handler = logging.FileHandler('log_file.txt', mode='w')
+        file_handler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        logger.addHandler(stream_handler)
 
 
 def load_best_known_solutions():
@@ -342,7 +343,8 @@ def main_tsplib(filepath):
     configure_logging()
     logger = logging.getLogger('app')
     instance = read_instance(filepath)
-    logger.info(f'Instance: {instance.name}')
+    name_without_extension = os.path.splitext(instance.name)[0]
+    logger.info(f'Instance: {name_without_extension}')
     logger.info(f'Comment: {instance.comment}')
     time_start = time.time()
     best_route, route_cost = grasp_gvns(instance)
@@ -351,10 +353,11 @@ def main_tsplib(filepath):
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
     logger.info(f'Route Cost: {route_cost}')
     best_known_solutions = load_best_known_solutions()
-    if instance.name in best_known_solutions:
-        best_known = best_known_solutions[instance.name]
+    if name_without_extension in best_known_solutions:
+        best_known = best_known_solutions[name_without_extension]
         logger.info(f'Best Known Solution: {best_known}')
     logger.handlers[0].close()
+    
     return plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
 
 
