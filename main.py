@@ -100,15 +100,15 @@ def main_maps(destinations):
     logger = logging.getLogger()
     distance_matrix = get_distance_matrix(destinations)
     instance_name = datetime.now().strftime("%Y%m%d%H%M%S")
-    instance = converter_distance_matrix_to_tsplib_instance(distance_matrix, instance_name)
+    instance = converter_distance_matrix_to_tsplib_instance(logger, distance_matrix, instance_name)
     with open(f'instances/maps/{instance_name}.tsp', 'w+') as file:
         instance.write(file)
     time_start = time.time()
     best_route, route_cost = grasp_gvns(instance)
     time_end = time.time()
-    logger.info(f'Best route: {best_route}')
-    logger.info(f'Execution time: {(time_end - time_start):.2f}s')
-    logger.info(f'Route cost: {route_cost}')
+    logger.info(f'Best Route: {best_route}')
+    logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
+    logger.info(f'Route Cost: {route_cost}')
     logger.handlers[0].close()
     route_coordinates = [get_coordinates(address) for address in destinations]
     ordered_route_coordinates = [route_coordinates[i] for i in best_route]
@@ -116,12 +116,13 @@ def main_maps(destinations):
     plot_route_in_googlemaps_directions(ordered_route_coordinates)
 
 
-def converter_distance_matrix_to_tsplib_instance(distance_matrix, name):
+def converter_distance_matrix_to_tsplib_instance(logger, distance_matrix, name):
     dimension = len(distance_matrix['destination_addresses'])
     edge_weights_matrix = [[0 for _ in range(dimension)] for _ in range(dimension)]
     for i, j in itertools.product(range(dimension), range(dimension)):
         edge_weights_matrix[i][j] = distance_matrix['rows'][i]['elements'][j]['distance']['value']
     addresses = "\n".join(f"{idx}: {address}" for idx, address in enumerate(distance_matrix['destination_addresses']))
+    logger.info(f'Comment: {addresses}')
 
     return tsplib95.models.StandardProblem(
         name=name,
