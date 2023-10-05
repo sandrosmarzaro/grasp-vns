@@ -412,9 +412,11 @@ class App(QMainWindow):
         splitter.addWidget(self.log_display)
 
         canvas = FigureCanvas(fig)
-        splitter.addWidget(canvas)
 
+        splitter.addWidget(canvas)
+        splitter.setSizes([self.width / 3, 2 * self.width / 3])
         layout.addWidget(splitter)
+
         toolbar_layout = QHBoxLayout()
 
         back_action = QAction("Back to Menu", self)
@@ -443,7 +445,7 @@ class App(QMainWindow):
         message = message.replace("Execution Time: ", "<br><br><b>Execution Time</b><br>")
         message = message.replace("Route Cost: ", "<br><br><b>Route Cost</b><br>")
         message = message.replace("\n", "<br>")
-        
+
         return message
 
     def create_back_button(self, toolbar):
@@ -535,6 +537,7 @@ class App(QMainWindow):
         web_view.load(QUrl.fromLocalFile(os.path.abspath(html_path)))
         splitter.addWidget(web_view)
 
+        splitter.setSizes([self.width / 3, 2 * self.width / 3])
         layout.addWidget(splitter)
 
         toolbar = QToolBar(self)
