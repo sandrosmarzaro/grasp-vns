@@ -442,7 +442,8 @@ class App(QMainWindow):
         message = message.replace("Best Route: ", "<br><br><b>Best Route</b><br>")
         message = message.replace("Execution Time: ", "<br><br><b>Execution Time</b><br>")
         message = message.replace("Route Cost: ", "<br><br><b>Route Cost</b><br>")
-
+        message = message.replace("\n", "<br>")
+        
         return message
 
     def create_back_button(self, toolbar):
