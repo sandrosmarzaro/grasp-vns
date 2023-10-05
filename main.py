@@ -414,7 +414,7 @@ class App(QMainWindow):
         canvas = FigureCanvas(fig)
 
         splitter.addWidget(canvas)
-        splitter.setSizes([self.width / 3, 2 * self.width / 3])
+        splitter.setSizes([int(self.width / 3), int(2 * self.width / 3)])
         layout.addWidget(splitter)
 
         toolbar_layout = QHBoxLayout()
@@ -537,7 +537,7 @@ class App(QMainWindow):
         web_view.load(QUrl.fromLocalFile(os.path.abspath(html_path)))
         splitter.addWidget(web_view)
 
-        splitter.setSizes([self.width / 3, 2 * self.width / 3])
+        splitter.setSizes([int(self.width / 3), int(2 * self.width / 3)])
         layout.addWidget(splitter)
 
         toolbar = QToolBar(self)
