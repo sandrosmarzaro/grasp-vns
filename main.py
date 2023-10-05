@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 import re
 import sys
+import json
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QLineEdit, QListWidget, QFileDialog, QMessageBox, QSizePolicy, QToolBar, QTextEdit, QSplitter
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QUrl
@@ -332,6 +333,11 @@ def configure_logging():
     logger.addHandler(stream_handler)
 
 
+def load_best_known_solutions():
+    with open("best_known_solutions_symmetric_tsp.json", "r") as file:
+        return json.load(file)
+
+
 def main_tsplib(filepath):
     configure_logging()
     logger = logging.getLogger('app')
@@ -344,6 +350,10 @@ def main_tsplib(filepath):
     logger.info(f'Best Route: {best_route}')
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
     logger.info(f'Route Cost: {route_cost}')
+    best_known_solutions = load_best_known_solutions()
+    if instance.name in best_known_solutions:
+        best_known = best_known_solutions[instance.name]
+        logger.info(f'Best Known Solution: {best_known}')
     logger.handlers[0].close()
     return plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
 
@@ -413,10 +423,7 @@ class App(QMainWindow):
 
         canvas = FigureCanvas(fig)
 
-        splitter.addWidget(canvas)
-        splitter.setSizes([int(self.width / 3), int(2 * self.width / 3)])
-        layout.addWidget(splitter)
-
+        self._add_widget_to_splitter_and_layout(splitter, canvas, layout)
         toolbar_layout = QHBoxLayout()
 
         back_action = QAction("Back to Menu", self)
@@ -444,6 +451,7 @@ class App(QMainWindow):
         message = message.replace("Best Route: ", "<br><br><b>Best Route</b><br>")
         message = message.replace("Execution Time: ", "<br><br><b>Execution Time</b><br>")
         message = message.replace("Route Cost: ", "<br><br><b>Route Cost</b><br>")
+        message = message.replace("Best Known Solution: ", "<br><br><b>Best Known Solution</b><br>")
         message = message.replace("\n", "<br>")
 
         return message
@@ -535,16 +543,17 @@ class App(QMainWindow):
 
         web_view = QWebEngineView(self)
         web_view.load(QUrl.fromLocalFile(os.path.abspath(html_path)))
-        splitter.addWidget(web_view)
-
-        splitter.setSizes([int(self.width / 3), int(2 * self.width / 3)])
-        layout.addWidget(splitter)
-
+        self._add_widget_to_splitter_and_layout(splitter, web_view, layout)
         toolbar = QToolBar(self)
         self.create_back_button(toolbar)
         layout.addWidget(toolbar)
 
         self.central_widget.setLayout(layout)
+
+    def _add_widget_to_splitter_and_layout(self, splitter, arg1, layout):
+        splitter.addWidget(arg1)
+        splitter.setSizes([int(self.width / 3), int(2 * self.width / 3)])
+        layout.addWidget(splitter)
 
 
 if __name__ == "__main__":
