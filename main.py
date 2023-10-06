@@ -551,6 +551,9 @@ class App(QMainWindow):
         if not api_key:
             QMessageBox.warning(self, "API Key Missing", "Please provide a valid Google Maps API key.")
             return
+        if len(self.address_list) < 2:
+            QMessageBox.warning(self, "Insufficient Addresses", "Please provide at least 2 addresses.")
+            return
         self.addresses = [self.address_list.item(i).text() for i in range(self.address_list.count())]
         main_maps(self.addresses)
         self.display_html("route_map_direction.html")
