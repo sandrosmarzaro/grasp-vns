@@ -477,6 +477,9 @@ class App(QMainWindow):
 
         self.address_label = QLabel("Enter Address", self)
         self.address_label.setAlignment(Qt.AlignCenter)
+        font_label = self.address_label.font()
+        font_label.setPointSize(18)
+        self.address_label.setFont(font_label)
         main_layout.addWidget(self.address_label)
 
         h_layout = QHBoxLayout()
@@ -484,10 +487,16 @@ class App(QMainWindow):
         h_layout.addStretch()
 
         self.address_input = QLineEdit(self)
+        font_input = self.address_input.font()
+        font_input.setPointSize(18)
+        self.address_input.setFont(font_input)
         h_layout.addWidget(self.address_input)
 
         self.add_address_button = QPushButton("Add", self)
         self.add_address_button.clicked.connect(self.add_address_to_list)
+        font_button_add = self.add_address_button.font()
+        font_button_add.setPointSize(18)
+        self.add_address_button.setFont(font_button_add)
         h_layout.addWidget(self.add_address_button)
 
         h_layout.addStretch()
@@ -495,18 +504,27 @@ class App(QMainWindow):
         main_layout.addLayout(h_layout)
 
         self.address_list = QListWidget(self)
-        self.address_list.setMaximumHeight(200)
+        self.address_list.setMaximumHeight(400)
         self.address_list.itemDoubleClicked.connect(self.remove_address_from_list)
+        font_list = self.address_list.font()
+        font_list.setPointSize(18)
+        self.address_list.setFont(font_list)
         main_layout.addWidget(self.address_list)
 
         buttons_layout = QHBoxLayout()
 
         self.back_to_menu_button = QPushButton("Back to Menu", self)
         self.back_to_menu_button.clicked.connect(self.create_main_menu)
+        font_button_back = self.back_to_menu_button.font()
+        font_button_back.setPointSize(18)
+        self.back_to_menu_button.setFont(font_button_back)
         buttons_layout.addWidget(self.back_to_menu_button)
 
         self.calculate_route_button = QPushButton("Calculate Route", self)
         self.calculate_route_button.clicked.connect(self.execute_main_maps)
+        font_button_calculate = self.calculate_route_button.font()
+        font_button_calculate.setPointSize(18)
+        self.calculate_route_button.setFont(font_button_calculate)
         buttons_layout.addWidget(self.calculate_route_button)
 
         main_layout.addLayout(buttons_layout)
@@ -533,8 +551,8 @@ class App(QMainWindow):
         if not api_key:
             QMessageBox.warning(self, "API Key Missing", "Please provide a valid Google Maps API key.")
             return
-        addresses = [self.address_list.item(i).text() for i in range(self.address_list.count())]
-        main_maps(addresses)
+        self.addresses = [self.address_list.item(i).text() for i in range(self.address_list.count())]
+        main_maps(self.addresses)
         self.display_html("route_map_direction.html")
 
     def display_html(self, html_path):
@@ -559,6 +577,11 @@ class App(QMainWindow):
         self._add_widget_to_splitter_and_layout(splitter, web_view, layout)
         toolbar = QToolBar(self)
         self.create_back_button(toolbar)
+        back_to_address_list_action = QAction("Back to Address List", self)
+        back_to_address_list_action.triggered.connect(self.back_to_address_list)
+        back_to_address_list_button = QToolBar(self)
+        back_to_address_list_button.addAction(back_to_address_list_action)
+        toolbar.addWidget(back_to_address_list_button)
         layout.addWidget(toolbar)
 
         self.central_widget.setLayout(layout)
@@ -567,6 +590,12 @@ class App(QMainWindow):
         splitter.addWidget(arg1)
         splitter.setSizes([int(self.width / 3), int(2 * self.width / 3)])
         layout.addWidget(splitter)
+
+    def back_to_address_list(self):
+        self.on_google_maps()
+        self.address_list.clear()
+        for address in self.addresses:
+            self.address_list.addItem(address)
 
 
 if __name__ == "__main__":
