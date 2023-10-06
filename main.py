@@ -435,6 +435,12 @@ class App(QMainWindow):
         back_button.addAction(back_action)
         toolbar_layout.addWidget(back_button)
 
+        load_tsplib_action = QAction("Load TSPLIB Instance", self)
+        load_tsplib_action.triggered.connect(self.on_tsplib)
+        load_tsplib_button = QToolBar(self)
+        load_tsplib_button.addAction(load_tsplib_action)
+        toolbar_layout.addWidget(load_tsplib_button)
+
         toolbar_layout.addStretch(1)
 
         toolbar = NavigationToolbar(canvas, self)
