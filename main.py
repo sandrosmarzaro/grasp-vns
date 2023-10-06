@@ -399,6 +399,11 @@ class App(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+    def set_font_size(self, widget, size):
+        font = widget.font()
+        font.setPointSize(size)
+        widget.setFont(font)
+
     def on_tsplib(self):
         filepath, _ = QFileDialog.getOpenFileName(self, "Select TSPLIB instance", "", "TSP files (*.tsp)")
         if filepath:
@@ -416,9 +421,7 @@ class App(QMainWindow):
         self.log_display.setReadOnly(True)
         self.log_display.setAcceptRichText(True)
 
-        font = self.log_display.font()
-        font.setPointSize(14)
-        self.log_display.setFont(font)
+        self.set_font_size(self.log_display, 14)
 
         with open('log_file.txt', 'r') as log_file:
             self.log_display.setHtml(self.log_and_display(log_file.read()))
@@ -429,16 +432,15 @@ class App(QMainWindow):
         self._add_widget_to_splitter_and_layout(splitter, canvas, layout)
         toolbar_layout = QHBoxLayout()
 
-        back_action = QAction("Back to Menu", self)
-        back_action.triggered.connect(self.create_main_menu)
         back_button = QToolBar(self)
-        back_button.addAction(back_action)
+        self.create_back_button(back_button)
         toolbar_layout.addWidget(back_button)
 
         load_tsplib_action = QAction("Load TSPLIB Instance", self)
         load_tsplib_action.triggered.connect(self.on_tsplib)
         load_tsplib_button = QToolBar(self)
         load_tsplib_button.addAction(load_tsplib_action)
+        self.set_font_size(load_tsplib_button, 18)
         toolbar_layout.addWidget(load_tsplib_button)
 
         toolbar_layout.addStretch(1)
@@ -469,6 +471,7 @@ class App(QMainWindow):
         back_action = QAction("Back to Menu", self)
         back_action.triggered.connect(self.create_main_menu)
         toolbar.addAction(back_action)
+        self.set_font_size(toolbar, 18)
 
     def on_google_maps(self):
         self.central_widget = QWidget(self)
@@ -477,9 +480,7 @@ class App(QMainWindow):
 
         self.address_label = QLabel("Enter Address", self)
         self.address_label.setAlignment(Qt.AlignCenter)
-        font_label = self.address_label.font()
-        font_label.setPointSize(18)
-        self.address_label.setFont(font_label)
+        self.set_font_size(self.address_label, 18)
         main_layout.addWidget(self.address_label)
 
         h_layout = QHBoxLayout()
@@ -487,16 +488,12 @@ class App(QMainWindow):
         h_layout.addStretch()
 
         self.address_input = QLineEdit(self)
-        font_input = self.address_input.font()
-        font_input.setPointSize(18)
-        self.address_input.setFont(font_input)
+        self.set_font_size(self.address_input, 18)
         h_layout.addWidget(self.address_input)
 
         self.add_address_button = QPushButton("Add", self)
         self.add_address_button.clicked.connect(self.add_address_to_list)
-        font_button_add = self.add_address_button.font()
-        font_button_add.setPointSize(18)
-        self.add_address_button.setFont(font_button_add)
+        self.set_font_size(self.add_address_button, 18)
         h_layout.addWidget(self.add_address_button)
 
         h_layout.addStretch()
@@ -506,31 +503,27 @@ class App(QMainWindow):
         self.address_list = QListWidget(self)
         self.address_list.setMaximumHeight(400)
         self.address_list.itemDoubleClicked.connect(self.remove_address_from_list)
-        font_list = self.address_list.font()
-        font_list.setPointSize(18)
-        self.address_list.setFont(font_list)
+        self.set_font_size(self.address_list, 18)
         main_layout.addWidget(self.address_list)
 
         buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch(1)
 
         self.back_to_menu_button = QPushButton("Back to Menu", self)
         self.back_to_menu_button.clicked.connect(self.create_main_menu)
-        font_button_back = self.back_to_menu_button.font()
-        font_button_back.setPointSize(18)
-        self.back_to_menu_button.setFont(font_button_back)
+        self.set_font_size(self.back_to_menu_button, 18)
         buttons_layout.addWidget(self.back_to_menu_button)
+
+        buttons_layout.addSpacing(130)
 
         self.calculate_route_button = QPushButton("Calculate Route", self)
         self.calculate_route_button.clicked.connect(self.execute_main_maps)
-        font_button_calculate = self.calculate_route_button.font()
-        font_button_calculate.setPointSize(18)
-        self.calculate_route_button.setFont(font_button_calculate)
+        self.set_font_size(self.calculate_route_button, 18)
         buttons_layout.addWidget(self.calculate_route_button)
 
+        buttons_layout.addStretch(1)
         main_layout.addLayout(buttons_layout)
-
         main_layout.addStretch()
-
         self.central_widget.setLayout(main_layout)
 
     def add_address_to_list(self):
@@ -568,9 +561,7 @@ class App(QMainWindow):
         self.log_display = QTextEdit(self)
         self.log_display.setReadOnly(True)
         self.log_display.setAcceptRichText(True)
-        font = self.log_display.font()
-        font.setPointSize(14)
-        self.log_display.setFont(font)
+        self.set_font_size(self.log_display, 14)
         with open('log_file.txt', 'r') as log_file:
             self.log_display.setHtml(self.log_and_display(log_file.read()))
         splitter.addWidget(self.log_display)
@@ -584,6 +575,7 @@ class App(QMainWindow):
         back_to_address_list_action.triggered.connect(self.back_to_address_list)
         back_to_address_list_button = QToolBar(self)
         back_to_address_list_button.addAction(back_to_address_list_action)
+        self.set_font_size(back_to_address_list_button, 18)
         toolbar.addWidget(back_to_address_list_button)
         layout.addWidget(toolbar)
 
