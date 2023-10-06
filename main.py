@@ -124,7 +124,7 @@ def main_maps(destinations):
     time_end = time.time()
     logger.info(f'Best Route: {best_route}')
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
-    logger.info(f'Route Cost: {route_cost}')
+    logger.info(f'Route Cost: {route_cost}m')
     logger.handlers[0].close()
     route_coordinates = [get_coordinates(address) for address in destinations]
     ordered_route_coordinates = [route_coordinates[i] for i in best_route]
@@ -156,7 +156,7 @@ def get_distance_matrix(destinations):
 
 
 def get_api_key():
-    return os.getenv('GOOGLE_MAPS_API_KEY')
+    return os.getenv('GOOGLE_MAPS_API_KEY', None)
 
 
 def plot_route_in_networkx(instance, route):
@@ -357,7 +357,7 @@ def main_tsplib(filepath):
         best_known = best_known_solutions[name_without_extension]
         logger.info(f'Best Known Solution: {best_known}')
     logger.handlers[0].close()
-    
+
     return plot_route_in_networkx(instance, best_route) if instance.display_data_type else None
 
 
@@ -523,6 +523,10 @@ class App(QMainWindow):
         self.address_list.takeItem(row)
 
     def execute_main_maps(self):
+        api_key = get_api_key()
+        if not api_key:
+            QMessageBox.warning(self, "API Key Missing", "Please provide a valid Google Maps API key.")
+            return
         addresses = [self.address_list.item(i).text() for i in range(self.address_list.count())]
         main_maps(addresses)
         self.display_html("route_map_direction.html")
