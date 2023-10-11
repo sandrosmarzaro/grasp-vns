@@ -120,7 +120,7 @@ def main_maps(destinations):
     with open(f'instances/maps/{instance_name}.tsp', 'w+') as file:
         instance.write(file)
     time_start = time.time()
-    best_route, route_cost = grasp_gvns(instance)
+    best_route, route_cost = reactive_grasp_gvns(instance)
     time_end = time.time()
     logger.info(f'Best Route: {best_route}')
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
@@ -299,6 +299,43 @@ def greedy_randomized_adaptive_search_procedure(instance, alpha):
     return route
 
 
+def reactive_grasp_gvns(instance):
+    MAX_ITERATIONS = 100
+    alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    m = len(alphas)
+    probabilities = [1/m for _ in alphas]
+    average_solutions = [0 for _ in alphas]
+    count_alphas = [0 for _ in alphas]
+    best_route = None
+    best_cost = float('inf')
+    # GVNS Parameters
+    k_max = 3
+    l_max = 3
+
+    for _ in range(MAX_ITERATIONS):
+        selected_alpha = random.choices(alphas, probabilities)[0]
+        alpha_index = alphas.index(selected_alpha)
+
+        grasp_route = greedy_randomized_adaptive_search_procedure(instance, selected_alpha)
+        gvns_route = general_variable_neighborhood_search(instance, grasp_route, k_max, l_max)
+        route_cost = calculate_route_cost(instance, gvns_route)
+
+        if route_cost < best_cost:
+            best_cost = route_cost
+            best_route = gvns_route
+
+        average_solutions[alpha_index] = (average_solutions[alpha_index] * count_alphas[alpha_index] + route_cost) \
+                                                                                / (count_alphas[alpha_index] + 1)
+        count_alphas[alpha_index] += 1
+
+        z_star = best_cost
+        q_values = [z_star / (avg if avg != 0 else 1e-10) for avg in average_solutions]
+        total_q = sum(q_values)
+        probabilities = [q / total_q for q in q_values]
+
+    return best_route, best_cost
+
+
 def grasp_gvns(instance):
     # GRASP Parameters
     alpha = 0.2
@@ -347,7 +384,7 @@ def main_tsplib(filepath):
     logger.info(f'Instance: {name_without_extension}')
     logger.info(f'Comment: {instance.comment}')
     time_start = time.time()
-    best_route, route_cost = grasp_gvns(instance)
+    best_route, route_cost = reactive_grasp_gvns(instance)
     time_end = time.time()
     logger.info(f'Best Route: {best_route}')
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
