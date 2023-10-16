@@ -35,10 +35,11 @@ def add_waypoint_markers(file_path):
         f"""
         new google.maps.Marker({{
             position: new google.maps.LatLng({lat}, {lng}),
+            label: "{idx}",
             map: map
         }});
         """
-        for lat, lng in waypoints
+        for idx, (lat, lng) in enumerate(waypoints)
     )
     pattern = r"(new google.maps.DirectionsRenderer\({.*?}\).setDirections\(response\);)"
     replacement = r"\1" + marker_code
