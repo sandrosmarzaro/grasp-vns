@@ -21,7 +21,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 
-def add_waypoint_markers(file_path):
+def add_waypoint_markers(file_path, best_route):
     with open(file_path, 'r') as file:
         content = file.read()
 
@@ -39,7 +39,7 @@ def add_waypoint_markers(file_path):
             map: map
         }});
         """
-        for idx, (lat, lng) in enumerate(waypoints)
+        for idx, (lat, lng) in zip(best_route, waypoints)
     )
     pattern = r"(new google.maps.DirectionsRenderer\({.*?}\).setDirections\(response\);)"
     replacement = r"\1" + marker_code
@@ -61,7 +61,7 @@ def suppress_markers_in_html(file_path):
         file.write(new_content)
 
 
-def plot_route_in_googlemaps_directions(route_coordinates):
+def plot_route_in_googlemaps_directions(route_coordinates, best_route):
     gmap = gmplot.GoogleMapPlotter(route_coordinates[0]['lat'], route_coordinates[0]['lng'], 15, apikey=get_api_key())
     gmap.directions(
         (float(route_coordinates[0]['lat']), float(route_coordinates[0]['lng']),),
@@ -70,7 +70,7 @@ def plot_route_in_googlemaps_directions(route_coordinates):
     )
     gmap.draw("route_map_direction.html")
     suppress_markers_in_html("route_map_direction.html")
-    add_waypoint_markers("route_map_direction.html")
+    add_waypoint_markers("route_map_direction.html", best_route)
 
 
 def plot_route_in_googlemaps(route_coordinates):
@@ -130,7 +130,7 @@ def main_maps(destinations):
     route_coordinates = [get_coordinates(address) for address in destinations]
     ordered_route_coordinates = [route_coordinates[i] for i in best_route]
     plot_route_in_googlemaps(ordered_route_coordinates)
-    plot_route_in_googlemaps_directions(ordered_route_coordinates)
+    plot_route_in_googlemaps_directions(ordered_route_coordinates, best_route)
 
 
 def converter_distance_matrix_to_tsplib_instance(addresses, distance_matrix, name):
