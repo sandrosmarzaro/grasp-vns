@@ -12,8 +12,8 @@ from datetime import datetime
 import re
 import sys
 import json
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QLineEdit, QListWidget, QFileDialog, QMessageBox, QSizePolicy, QToolBar, QTextEdit, QSplitter
-from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QLabel, QLineEdit, QListWidget, QFileDialog, QMessageBox, QSizePolicy, QToolBar, QTextEdit, QSplitter, QSpinBox, QComboBox
+from PyQt5.QtGui import QFont, QIntValidator
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtWidgets import QAction
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -102,7 +102,7 @@ def get_coordinates(destination):
     return None
 
 
-def main_maps(destinations):
+def main_maps(destinations, time_limit, iterations_limit, alpha, neighborhoods):
     configure_logging()
     logger = logging.getLogger('app')
     distance_matrix = get_distance_matrix(destinations)
@@ -121,7 +121,10 @@ def main_maps(destinations):
     with open(f'instances/maps/{instance_name}.tsp', 'w+') as file:
         instance.write(file)
     time_start = time.time()
-    best_route, route_cost = reactive_grasp_gvns(instance)
+    if alpha:
+        best_route, route_cost = reactive_grasp_gvns(instance, time_limit, iterations_limit, neighborhoods)
+    else:
+        best_route, route_cost = grasp_gvns(instance, time_limit, iterations_limit, alpha, neighborhoods)
     time_end = time.time()
     logger.info(f'Best Route: {best_route}')
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
@@ -300,8 +303,7 @@ def greedy_randomized_adaptive_search_procedure(instance, alpha):
     return route
 
 
-def reactive_grasp_gvns(instance):
-    MAX_ITERATIONS = 100
+def reactive_grasp_gvns(instance, time_limit, iterations_limit, neighborhoods):
     alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     m = len(alphas)
     probabilities = [1/m for _ in alphas]
@@ -309,16 +311,15 @@ def reactive_grasp_gvns(instance):
     count_alphas = [0 for _ in alphas]
     best_route = None
     best_cost = float('inf')
-    # GVNS Parameters
-    k_max = 3
-    l_max = 3
 
-    for _ in range(MAX_ITERATIONS):
+    start_time = time.time()
+
+    for _ in range(iterations_limit):
         selected_alpha = random.choices(alphas, probabilities)[0]
         alpha_index = alphas.index(selected_alpha)
 
         grasp_route = greedy_randomized_adaptive_search_procedure(instance, selected_alpha)
-        gvns_route = general_variable_neighborhood_search(instance, grasp_route, k_max, l_max)
+        gvns_route = general_variable_neighborhood_search(instance, grasp_route, neighborhoods, neighborhoods)
         route_cost = calculate_route_cost(instance, gvns_route)
 
         if route_cost < best_cost:
@@ -334,23 +335,29 @@ def reactive_grasp_gvns(instance):
         total_q = sum(q_values)
         probabilities = [q / total_q for q in q_values]
 
+        if time_limit:
+            elapsed_time = time.time() - start_time
+            if elapsed_time >= time_limit:
+                break
+
     return best_route, best_cost
 
 
-def grasp_gvns(instance):
-    # GRASP Parameters
-    alpha = 0.2
-    max_iterations = 100
-    # GVNS Parameters
-    k_max = 3
-    l_max = 3
+def grasp_gvns(instance, time_limit, iterations_limit, alpha, neighborhoods):
 
-    for _ in range(1, max_iterations + 1):
+    start_time = time.time()
+
+    for _ in range(1, iterations_limit + 1):
         grasp_route = greedy_randomized_adaptive_search_procedure(instance, alpha)
-        gvns_route = general_variable_neighborhood_search(instance, grasp_route, k_max, l_max)
+        gvns_route = general_variable_neighborhood_search(instance, grasp_route, neighborhoods, neighborhoods)
         if _ == 1:
             best_route = gvns_route
         best_route, route_cost = update_best_route(instance, best_route, gvns_route)
+
+        if time_limit:
+            elapsed_time = time.time() - start_time
+            if elapsed_time >= time_limit:
+                break
 
     return best_route, route_cost
 
@@ -377,7 +384,7 @@ def load_best_known_solutions():
         return json.load(file)
 
 
-def main_tsplib(filepath):
+def main_tsplib(filepath, time_limit, iterations_limit, alpha, neighborhoods):
     configure_logging()
     logger = logging.getLogger('app')
     instance = read_instance(filepath)
@@ -385,7 +392,10 @@ def main_tsplib(filepath):
     logger.info(f'Instance: {name_without_extension}')
     logger.info(f'Comment: {instance.comment}')
     time_start = time.time()
-    best_route, route_cost = reactive_grasp_gvns(instance)
+    if alpha:
+        best_route, route_cost = reactive_grasp_gvns(instance, time_limit, iterations_limit, neighborhoods)
+    else:
+        best_route, route_cost = grasp_gvns(instance, time_limit, iterations_limit, alpha, neighborhoods)
     time_end = time.time()
     logger.info(f'Best Route: {best_route}')
     logger.info(f'Execution Time: {(time_end - time_start):.2f}s')
@@ -415,26 +425,86 @@ class App(QMainWindow):
         self.create_main_menu()
 
     def create_main_menu(self):
-        layout = QHBoxLayout()
+        layout = QVBoxLayout()
+        sub_layout = QHBoxLayout()
 
         font = QFont()
         font.setPointSize(24)
 
         self.tsplib_button = QPushButton('TSPLIB', self)
         self.tsplib_button.setFont(font)
-        self.tsplib_button.clicked.connect(self.on_tsplib)
+        self.tsplib_button.clicked.connect(self.tsplib_button_clicked)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tsplib_button.setSizePolicy(sizePolicy)
-        layout.addWidget(self.tsplib_button)
+        sub_layout.addWidget(self.tsplib_button)
+        sub_layout.addSpacing(10)
+        self.set_font_size(self.tsplib_button, 30)
 
         self.google_maps_button = QPushButton('Google Maps', self)
         self.google_maps_button.setFont(font)
-        self.google_maps_button.clicked.connect(self.on_google_maps)
+        self.google_maps_button.clicked.connect(self.google_maps_button_clicked)
         self.google_maps_button.setSizePolicy(sizePolicy)
-        layout.addWidget(self.google_maps_button)
+        sub_layout.addWidget(self.google_maps_button)
+        self.set_font_size(self.google_maps_button, 30)
+
+        layout.addLayout(sub_layout)
+        layout.addSpacing(20)
+
+        time_limit_layout = QHBoxLayout()
+        time_limit_label = QLabel("Time Limit")
+        self.time_limit_input = QLineEdit("0")
+        self.time_limit_validator = QIntValidator(0, 999999999, self)
+        self.time_limit_input.setValidator(self.time_limit_validator)
+        time_limit_layout.addWidget(time_limit_label)
+        time_limit_layout.addWidget(self.time_limit_input)
+        layout.addLayout(time_limit_layout)
+        self.set_font_size(time_limit_label, 18)
+        self.set_font_size(self.time_limit_input, 18)
+
+        iterations_limit_layout = QHBoxLayout()
+        iterations_limit_label = QLabel("Iterations Limit")
+        self.iterations_limit_input = QLineEdit("100")
+        self.iterations_limit_validator = QIntValidator(0, 999999999, self)
+        self.iterations_limit_input.setValidator(self.iterations_limit_validator)
+        iterations_limit_layout.addWidget(iterations_limit_label)
+        iterations_limit_layout.addWidget(self.iterations_limit_input)
+        layout.addLayout(iterations_limit_layout)
+        self.set_font_size(iterations_limit_label, 18)
+        self.set_font_size(self.iterations_limit_input, 18)
+
+        alpha_layout = QHBoxLayout()
+        alpha_label = QLabel("Alpha")
+        self.alpha_input = QComboBox(self)
+        alpha_values = ["0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1"]
+        self.alpha_input.addItems(alpha_values)
+        alpha_layout.addWidget(alpha_label)
+        alpha_layout.addWidget(self.alpha_input)
+        layout.addLayout(alpha_layout)
+        self.set_font_size(alpha_label, 18)
+        self.set_font_size(self.alpha_input, 18)
+
+        neighborhood_layout = QHBoxLayout()
+        neighborhood_label = QLabel("Number of Neighborhoods")
+        self.neighborhood_spinbox = QSpinBox()
+        self.neighborhood_spinbox.setRange(1, 3)
+        self.neighborhood_spinbox.setValue(3)
+        neighborhood_layout.addWidget(neighborhood_label)
+        neighborhood_layout.addWidget(self.neighborhood_spinbox)
+        layout.addLayout(neighborhood_layout)
+        self.set_font_size(neighborhood_label, 18)
+        self.set_font_size(self.neighborhood_spinbox, 18)
 
         central_widget = QWidget()
-        central_widget.setLayout(layout)
+        central_layout = QHBoxLayout()
+        v_box = QVBoxLayout()
+        v_box.addStretch()
+        v_box.addLayout(layout)
+        v_box.addStretch()
+        central_layout.addStretch()
+        central_layout.addLayout(v_box)
+        central_layout.addStretch()
+        central_widget.setLayout(central_layout)
+
         self.setCentralWidget(central_widget)
 
     def set_font_size(self, widget, size):
@@ -442,10 +512,24 @@ class App(QMainWindow):
         font.setPointSize(size)
         widget.setFont(font)
 
-    def on_tsplib(self):
+    def tsplib_button_clicked(self):
+        time_limit = float(self.time_limit_input.text())
+        iterations_limit = int(self.iterations_limit_input.text())
+        alpha = float(self.alpha_input.currentText())
+        neighborhoods = self.neighborhood_spinbox.value()
+        self.on_tsplib(time_limit, iterations_limit, alpha, neighborhoods)
+
+    def google_maps_button_clicked(self):
+        time_limit = float(self.time_limit_input.text())
+        iterations_limit = int(self.iterations_limit_input.text())
+        alpha = float(self.alpha_input.currentText())
+        neighborhoods = self.neighborhood_spinbox.value()
+        self.on_google_maps(time_limit, iterations_limit, alpha, neighborhoods)
+
+    def on_tsplib(self, time_limit, iterations_limit, alpha, neighborhoods):
         filepath, _ = QFileDialog.getOpenFileName(self, "Select TSPLIB instance", "", "TSP files (*.tsp)")
         if filepath:
-            fig = main_tsplib(filepath)
+            fig = main_tsplib(filepath, time_limit, iterations_limit, alpha, neighborhoods)
             self.display_plot(fig)
 
     def display_plot(self, fig):
@@ -511,7 +595,12 @@ class App(QMainWindow):
         toolbar.addAction(back_action)
         self.set_font_size(toolbar, 18)
 
-    def on_google_maps(self):
+    def on_google_maps(self, time_limit, iterations_limit, alpha, neighborhoods):
+        self.time_limit = time_limit
+        self.iterations_limit = iterations_limit
+        self.alpha = alpha
+        self.neighborhoods = neighborhoods
+
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
         main_layout = QVBoxLayout()
@@ -555,7 +644,7 @@ class App(QMainWindow):
         buttons_layout.addSpacing(130)
 
         self.calculate_route_button = QPushButton("Calculate Route", self)
-        self.calculate_route_button.clicked.connect(self.execute_main_maps)
+        self.calculate_route_button.clicked.connect(lambda: self.execute_main_maps(time_limit, iterations_limit, alpha, neighborhoods))
         self.set_font_size(self.calculate_route_button, 18)
         buttons_layout.addWidget(self.calculate_route_button)
 
@@ -577,7 +666,7 @@ class App(QMainWindow):
         row = self.address_list.row(item)
         self.address_list.takeItem(row)
 
-    def execute_main_maps(self):
+    def execute_main_maps(self, time_limit, iterations_limit, alpha, neighborhoods):
         api_key = get_api_key()
         if not api_key:
             QMessageBox.warning(self, "API Key Missing", "Please provide a valid Google Maps API key.")
@@ -586,7 +675,7 @@ class App(QMainWindow):
             QMessageBox.warning(self, "Insufficient Addresses", "Please provide at least 2 addresses.")
             return
         self.addresses = [self.address_list.item(i).text() for i in range(self.address_list.count())]
-        main_maps(self.addresses)
+        main_maps(self.addresses, time_limit, iterations_limit, alpha, neighborhoods)
         self.display_html("route_map_direction.html")
 
     def display_html(self, html_path):
@@ -625,7 +714,7 @@ class App(QMainWindow):
         layout.addWidget(splitter)
 
     def back_to_address_list(self):
-        self.on_google_maps()
+        self.on_google_maps(self.time_limit, self.iterations_limit, self.alpha, self.neighborhoods)
         self.address_list.clear()
         for address in self.addresses:
             self.address_list.addItem(address)
