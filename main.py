@@ -195,16 +195,58 @@ def calculate_route_cost(instance, route):
 
 
 def three_opt(instance, route):
-    for i in range(1, len(route) - 4):
-        for j in range(i + 1, len(route) - 3):
-            for k in range(j + 1, len(route) - 2):
-                if instance.get_weight(route[i], route[i + 1]) + instance.get_weight(route[j], route[j + 1]) + \
-                    instance.get_weight(route[k], route[k + 1]) > instance.get_weight(route[i], route[j]) + \
-                        instance.get_weight(route[i + 1], route[j + 1]) + instance.get_weight(route[k], route[k + 1]):
-                    route[i + 1], route[j] = route[j], route[i + 1]
-                    route[i + 2:j + 1] = reversed(route[i + 2:j + 1])
-                    route[j + 1], route[k] = route[k], route[j + 1]
-                    route[j + 2:k + 1] = reversed(route[j + 2:k + 1])
+    n = len(route)
+    best_delta = float('inf')
+
+    for i in range(n - 4):
+        for j in range(i + 2, n - 2):
+            for k in range(j + 2, n - (2 if (i != 0 or j != 1) else 1)):
+
+                delta1 = instance.get_weight(route[i], route[j]) + instance.get_weight(route[i+1], route[k]) + \
+                        instance.get_weight(route[j+1], route[k+1]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+                delta2 = instance.get_weight(route[i], route[j]) + instance.get_weight(route[i+1], route[k+1]) + \
+                        instance.get_weight(route[j+1], route[k]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+                delta3 = instance.get_weight(route[i], route[k]) + instance.get_weight(route[i+1], route[j]) + \
+                        instance.get_weight(route[j+1], route[k+1]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+                delta4 = instance.get_weight(route[i], route[j+1]) + instance.get_weight(route[k], route[i+1]) + \
+                        instance.get_weight(route[j], route[k+1]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+                delta5 = instance.get_weight(route[i], route[k]) + instance.get_weight(route[j+1], route[i+1]) + \
+                        instance.get_weight(route[j], route[k+1]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+                delta6 = instance.get_weight(route[i], route[j+1]) + instance.get_weight(route[k], route[j]) + \
+                        instance.get_weight(route[i+1], route[k+1]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+                delta7 = instance.get_weight(route[i], route[k+1]) + instance.get_weight(route[j+1], route[j]) + \
+                        instance.get_weight(route[k], route[i+1]) - instance.get_weight(route[i], route[i+1]) - \
+                        instance.get_weight(route[j], route[j+1]) - instance.get_weight(route[k], route[k+1])
+
+                deltas = [(delta1, 1), (delta2, 2), (delta3, 3), (delta4, 4), (delta5, 5), (delta6, 6), (delta7, 7)]
+                best_variant = min(deltas, key=lambda x: x[0])
+
+                if best_variant[0] < best_delta:
+                    best_delta = best_variant[0]
+                    a, b, c, d = i+1, j, j+1, k+1
+
+                    if best_variant[1] == 1:
+                        route[a:c] = reversed(route[a:c])
+                    elif best_variant[1] == 2:
+                        route[a:b], route[b:c] = reversed(route[a:b]), reversed(route[b:c])
+                    elif best_variant[1] == 3:
+                        route[a:b], route[c:d] = reversed(route[a:b]), reversed(route[c:d])
+                    elif best_variant[1] == 4:
+                        route = route[:a] + route[b:c+1] + route[a:b] + route[c+1:d] + route[d:]
+                    elif best_variant[1] == 5:
+                        route = route[:a] + route[b:c+1][::-1] + route[a:b] + route[c+1:d] + route[d:]
+                    elif best_variant[1] == 6:
+                        route = route[:a] + route[c+1:d+1] + route[b:c+1][::-1] + route[a:b] + route[d+1:]
+                    elif best_variant[1] == 7:
+                        route = route[:a] + route[c+1:d+1] + route[b:c+1][::-1] + route[a:b][::-1] + route[d+1:]
+
+                    return route
 
     return route
 
