@@ -475,10 +475,43 @@ class App(QMainWindow):
         self.height = 720
         self.initUI()
 
+        self.time_limit = 0
+        self.iterations_limit = 100
+        self.alpha = 0
+        self.neighborhoods = 3
+        self.setup_connections()
+
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
         self.create_main_menu()
+
+    def setup_connections(self):
+        self.time_limit_input.textChanged.connect(self.update_time_limit)
+        self.iterations_limit_input.textChanged.connect(self.update_iterations_limit)
+        self.alpha_input.currentIndexChanged.connect(self.update_alpha)
+        self.neighborhood_spinbox.valueChanged.connect(self.update_neighborhoods)
+
+    def update_time_limit(self):
+        try:
+            self.time_limit = float(self.time_limit_input.text())
+        except ValueError:
+            self.time_limit = 0
+
+    def update_iterations_limit(self):
+        try:
+            self.iterations_limit = int(self.iterations_limit_input.text())
+        except ValueError:
+            self.iterations_limit = 100
+
+    def update_alpha(self):
+        try:
+            self.alpha = float(self.alpha_input.currentText())
+        except ValueError:
+            self.alpha = 0.5
+
+    def update_neighborhoods(self):
+        self.neighborhoods = self.neighborhood_spinbox.value()
 
     def create_main_menu(self):
         layout = QVBoxLayout()
@@ -615,7 +648,7 @@ class App(QMainWindow):
         toolbar_layout.addWidget(back_button)
 
         load_tsplib_action = QAction("Load TSPLIB Instance", self)
-        load_tsplib_action.triggered.connect(self.on_tsplib)
+        load_tsplib_action.triggered.connect(lambda: self.on_tsplib(self.time_limit, self.iterations_limit, self.alpha, self.neighborhoods))
         load_tsplib_button = QToolBar(self)
         load_tsplib_button.addAction(load_tsplib_action)
         self.set_font_size(load_tsplib_button, 18)
