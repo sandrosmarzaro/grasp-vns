@@ -252,29 +252,19 @@ def three_opt(instance, route):
 
 
 def or_opt(instance, route):
-    best_improvement = 0
-    best_route = route[:]
+    n = len(route)
 
-    for k in range(1, 4):
-        for i in range(1, len(route) - k - 1):
-            sequence = route[i:i + k]
-            for j in range(len(route) - k):
-                if not (i <= j < i + k or i <= j + k < i + k):
-                    new_route = route[:i] + route[i + k:]
-                    new_route = new_route[:j] + sequence + new_route[j:]
+    for i in range(n - 3):
+        for j in range(i + 2, n):
+            a, b, c = route[i], route[i+1], route[j]
 
-                    before_removal = instance.get_weight(route[i - 1], route[i]) + \
-                        instance.get_weight(route[i + k - 1], route[(i + k) % len(route)])
-                    after_insertion = instance.get_weight(new_route[j - 1], new_route[j]) + \
-                        instance.get_weight(new_route[j + k - 1], new_route[(j + k) % len(new_route)])
+            original_cost = instance.get_weight(a, b) + instance.get_weight(b, c)
+            new_cost = instance.get_weight(a, c)
 
-                    if before_removal > after_insertion:
-                        improvement = before_removal - after_insertion
-                        if improvement > best_improvement:
-                            best_improvement = improvement
-                            best_route = new_route
+            if new_cost < original_cost:
+                route[i+1:j] = route[i+1:j][::-1]
 
-    return best_route
+    return route
 
 
 def two_opt(instance, route):
